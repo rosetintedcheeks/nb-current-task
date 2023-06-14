@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Add the new subcommand name with `_subcommands add <name>`.
+_subcommands add "current-task"
+
+# Define help and usage text with `_subcommands describe <subcommand> <usage>`.
+_subcommands describe "current-task" <<HEREDOC
+Usage:
+  nb example
+
+Description:
+  Print "Hello, World!"
+HEREDOC
+
+
+_todo_get_task() {
+    local _counter=0
+    local _item_path="${1:?}"
+    local _task_number="${2:?}"
+
+    {
+      cat "${_item_path:-}"
+    } | {
+      local         __line=
+      while read -r __line
+      do
+        if [[ "${__line}" =~ (\-\ \[\]|\-\ \[\ \]|\-\ \[\x\]) ]]
+        then
+          _counter="$((_counter+1))"
+
+          if [[ "${_counter:-}" == "${_task_number:-}" ]]
+          then
+			# slice off beginning "-"
+            printf "%s\\n" "${__line:1:${#__line}}"
+
+            return 0
+          fi
+        fi
+      done
+
+      return 1
+    }
+}
+_current-task() {
+	local _selector="${1:-}"
+	local _task_number="${2:-}"
+	local _path=
+
+	if [[ -z "${_selector:-}" && -z "${_task_number:-}" ]]; then
+		# if there's a current task, print it
+		# if not, error
+		if [[ -e "${NB_DIR}/.current-task" ]]; then
+			{ 
+				cat "${NB_DIR}/.current-task"
+			} | {
+				read -r _selector
+				read -r _path
+				read -r _task_number
+				echo -n "["${_selector}" "${_task_number}"]"
+				_todo_get_task $_path $_task_number
+			}
+			exit 0
+		else
+			>&2 echo "Error: no current task!"
+			exit 1
+		fi
+	fi
+
+    # Get the filename using the selector.
+	local _filename=
+	_filename="$(_show "${_selector}" --filename)"
+
+	local _notebook_path=
+	_notebook_path="$(_notebooks show "${_selector}" --path 2>/dev/null || _notebooks current --path)"
+
+	_path=${_notebook_path}/${_filename}
+
+	# Truncate
+	echo $_selector > ${NB_DIR}/.current-task
+	echo $_path >> ${NB_DIR}/.current-task
+	echo $_task_number >> ${NB_DIR}/.current-task
+
+	echo -n "["${_selector}" "${_task_number}"]"
+	_todo_get_task $_path $_task_number
+}
+
+#vim: set syntax=bash
