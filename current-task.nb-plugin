@@ -5,10 +5,11 @@ _subcommands add "current-task"
 # Define help and usage text with `_subcommands describe <subcommand> <usage>`.
 _subcommands describe "current-task" <<HEREDOC
 Usage:
-  nb example
+  nb current-task
+  nb current-task <selector> <task number>
 
 Description:
-  Print "Hello, World!"
+  sets a current task using the selector and a task number and prints it when given no args
 HEREDOC
 
 
